@@ -8,17 +8,23 @@ import lombok.extern.slf4j.Slf4j;
 @ZRoute(url = "/hello")
 public class HelloRouter implements IRouter {
     @ZPath(url = "/world")
-    public void helloWorld() {
-        log.debug("Hello World");
+    public String helloWorld() {
+        String msg = "Hello World";
+        log.debug(msg);
+        return msg;
     }
 
     @ZPath(url = "/foo")
-    public void helloFoo() {
-        log.debug("Hello Foo");
+    public String helloFoo() {
+        String msg = "Hello Foo";
+        log.debug(msg);
+        return msg;
     }
 
     @ZPath(url = "/bar")
-    public void helloBar() {
-        log.debug("Hello Bar");
+    public String helloBar() {
+        String msg = "Hello Bar";
+        log.debug(msg);
+        return msg;
     }
 }

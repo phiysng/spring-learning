@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * HTTP相应的相应方法
+ * HTTP响应的相应方法
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

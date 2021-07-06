@@ -3,11 +3,22 @@ package io.phiysng.vertxrouter.vertx.component;
 import io.phiysng.vertxrouter.annotation.ZPath;
 import io.phiysng.vertxrouter.annotation.ZRoute;
 import io.phiysng.vertxrouter.vertx.router.IRouter;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpServer;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.ext.web.Route;
+import io.vertx.ext.web.Router;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
@@ -18,12 +29,12 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-public class VertxApplicationCommandRunner implements CommandLineRunner {
+public class VertxApplicationCommandRunner extends AbstractVerticle implements CommandLineRunner {
     @Autowired
     List<IRouter> routerList;
 
     // 保存url到对应的方法的映射
-    private Map<String, Method> urlMap = new HashMap<>();
+    private Map<String, Tuple2<Method, IRouter>> urlMap = new HashMap<>();
 
     /**
      * 解析并注册所有的路由和方法
@@ -46,14 +57,40 @@ public class VertxApplicationCommandRunner implements CommandLineRunner {
                         if (urlMap.containsKey(uri)) {
                             log.warn("key {} exists already , will override existing value {}", uri, urlMap.get(uri));
                         }
-                        urlMap.put(uri, method);
+                        urlMap.put(uri, Tuples.of(method, router));
                     }
                 }
             }
 
         }
-        for (Map.Entry<String, Method> kv : urlMap.entrySet()) {
-            log.info("注册的路由: {} : {}", kv.getKey(), kv.getValue());
+        Vertx vertx = Vertx.vertx();
+        HttpServer server = vertx.createHttpServer();
+
+        Router router = Router.router(vertx);
+
+        for (Map.Entry<String, Tuple2<Method, IRouter>> kv : urlMap.entrySet()) {
+            Route route = router.route().path(kv.getKey());
+            log.info("注册到vertx: {} : {} {}", kv.getKey(), kv.getValue().getT2(), kv.getValue().getT1());
+
+            route.handler(ctx -> {
+                Method method = kv.getValue().getT1();
+                IRouter iRouter = kv.getValue().getT2();
+                String msg = null;
+                try {
+                    msg = (String) method.invoke(iRouter);
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+
+                HttpServerResponse response = ctx.response();
+                response.putHeader("content-type", "text/plain");
+                // Write to the response and end it
+                Logger logger = LoggerFactory.getLogger(this.getClass());
+                logger.info("{} : response message : {}", ctx.request().path(), msg);
+                response.end(msg);
+            });
         }
+        // listen
+        server.requestHandler(router).listen(8080);
     }
 }
